@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GhostImage - 專業 AI 驅動的圖片處理平台</title>
+    <meta name="description" content="整合 AI 商業攝影、圖片轉向量、4K 畫質提升與老照片修復的全方位影像工具。">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --secondary: #475569;
+            --dark: #0f172a;
+            --light: #f8fafc;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: var(--secondary);
+            background: var(--light);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Hero Section */
+        header {
+            background: white;
+            padding: 80px 0 60px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: var(--dark);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: #64748b;
+            max-width: 700px;
+            margin: 0 auto 30px;
+        }
+
+        .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #1d4ed8;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #eff6ff;
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        /* Section Titles */
+        .section-title {
+            text-align: center;
+            margin: 60px 0 40px;
+        }
+
+        .section-title h2 {
+            font-size: 2rem;
+            color: var(--dark);
+            margin-bottom: 10px;
+        }
+
+        /* Features Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            padding-bottom: 60px;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .card h3 {
+            margin: 0 0 10px;
+            color: var(--dark);
+            font-size: 1.25rem;
+        }
+
+        .card p {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 15px;
+        }
+
+        .tech-tag {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        /* Free Tools Section */
+        .free-tools {
+            background: #1e293b;
+            color: white;
+            padding: 60px 0;
+        }
+
+        .free-tools h2 {
+            color: white;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .tool-grid {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .tool-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px 30px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Footer */
+        footer {
+            background: white;
+            border-top: 1px solid #e2e8f0;
+            padding: 40px 0;
+            margin-top: auto;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: var(--secondary);
+            text-decoration: none;
+            margin: 0 15px;
+        }
+
+        footer a:hover {
+            color: var(--primary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="container">
+            <span class="tag">v1.0.0 正式發布</span>
+            <h1>GhostImage AI</h1>
+            <p class="subtitle">專為創作者打造的一站式影像處理解決方案。<br>整合 Flux Pro、Real-ESRGAN 與 WhisperX 等頂尖模型。</p>
+            <a href="https://image.ghostoffice.cc" class="btn">開始使用 (Login)</a>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="section-title">
+            <h2>✨ 核心 AI 功能</h2>
+            <p>由 Replicate 與 OpenAI 強力驅動</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <span class="card-icon">🛍️</span>
+                <h3>AI 商業攝影棚</h3>
+                <p>自動生成專業商品場景圖，支援極簡、自然、奢華等 8 種風格，相容多種長寬比。</p>
+                <span class="tech-tag">Flux Pro</span>
+            </div>
+            <div class="card">
+                <span class="card-icon">📐</span>
+                <h3>AI 圖片轉向量</h3>
+                <p>將點陣圖 (JPG/PNG) 轉換為可無限縮放的 SVG 向量圖，內建自動去背功能。</p>
+                <span class="tech-tag">Vectorizer</span>
+            </div>
+            <div class="card">
+                <span class="card-icon">✨</span>
+                <h3>4K 畫質升級</h3>
+                <p>提供基礎升頻、人像精修、黑白上色與老照片修復四種模式，重現清晰細節。</p>
+                <span class="tech-tag">Real-ESRGAN</span>
+            </div>
+            <div class="card">
+                <span class="card-icon">🎬</span>
+                <h3>AI 字幕生成</h3>
+                <p>支援 YouTube 下載與音訊上傳，自動生成中英日多語言字幕。</p>
+                <span class="tech-tag">WhisperX Large-v3</span>
+            </div>
+            <div class="card">
+                <span class="card-icon">🤖</span>
+                <h3>智能客服助手</h3>
+                <p>RAG 驅動的 AI 助手，即時回答關於圖片處理與工具使用的所有問題。</p>
+                <span class="tech-tag">GPT-4o-mini + ChromaDB</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="free-tools">
+        <div class="container">
+            <h2>🛠️ 免費工具箱 (無需上傳)</h2>
+            <p style="text-align: center; color: #94a3b8; margin-bottom: 30px;">
+                我們提供純客戶端運行的工具，保護您的隱私，處理速度更快。
+            </p>
+            <div class="tool-grid">
+                <div class="tool-item">⚡ 圖片極速壓縮</div>
+                <div class="tool-item">✂️ 智能裁切</div>
+                <div class="tool-item">📂 批次處理</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>
+                <a href="privacy.html">隱私權政策</a>
+                <a href="#">服務條款</a>
+                <a href="mailto:support@ghostoffice.cc">聯絡我們</a>
+            </p>
+            <p style="margin-top: 20px;">&copy; 2025 GhostImage. Powered by Ghost Office.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
