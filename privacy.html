@@ -36,6 +36,17 @@
             margin-top: 25px;
             color: #4a5568;
             font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        /* 新增 h4 樣式以配合 Google 區塊需求 */
+        h4 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #d97706; /* 配合黃色背景的深橘色 */
+            font-size: 1.1em;
+            font-weight: 700;
+            text-transform: uppercase;
         }
 
         p,
@@ -68,7 +79,7 @@
 
         .google-section {
             background-color: #fff8f0;
-            padding: 20px;
+            padding: 25px; /* 稍微增加內距 */
             border-radius: 8px;
             border-left: 4px solid #fbbc05;
             margin: 25px 0;
@@ -104,7 +115,7 @@
 <body>
 
     <h1>隱私權政策 (Privacy Policy)</h1>
-    <span class="update-date">最後更新日期：2025年12月02日</span>
+    <span class="update-date">最後更新日期：2025年12月04日</span>
 
     <p>歡迎使用 GhostImage（以下簡稱「本服務」）。本服務由 Ghost Office 團隊營運。我們致力於保護您的隱私，並透明化我們的資料處理流程。</p>
 
@@ -118,19 +129,34 @@
     </ul>
 
     <div class="google-section">
-        <h3>🔍 Google 使用者資料規範 (Google User Data)</h3>
-        <p>為了驗證您的身份並提供個人化服務，我們使用 Google OAuth 2.0 協議。針對我們請求的權限，我們承諾：</p>
+        <h3>🔍 Google User Data Policy (Google 使用者資料規範)</h3>
+        <p>為符合 Google API 服務使用者資料政策 (Google API Services User Data Policy)，我們明確揭露以下資訊：</p>
+        
+        <h4>1. Data Accessed (我們存取的資料)</h4>
+        <p>Our application accesses the following Google user data (本應用程式存取以下資料):</p>
         <ul>
-            <li><strong>存取範圍：</strong>
-                <ul>
-                    <li><code>.../auth/userinfo.email</code>：僅用於建立帳戶唯一標識與發送系統通知（如：處理完成通知）。</li>
-                    <li><code>.../auth/userinfo.profile</code>：僅用於顯示您的暱稱與頭像。</li>
-                </ul>
+            <li><strong>View your email address (userinfo.email):</strong><br>
+                Used solely to identify your account and send system notifications.<br>
+                (僅用於識別您的帳戶身分以及發送處理完成通知。)
             </li>
-            <li><strong>資料使用限制：</strong>Google 使用者資料僅用於「身份驗證」。我們<strong>不會</strong>出售、出租或將您的 Google 資料用於廣告行銷目的。</li>
+            <li><strong>See your personal info, including any personal info you've made publicly available (userinfo.profile):</strong><br>
+                Used to display your name and profile picture within the app interface.<br>
+                (僅用於在應用程式介面中顯示您的名稱與頭像。)
+            </li>
         </ul>
-    </div>
 
+        <h4>2. Data Usage (資料使用方式)</h4>
+        <p>The data accessed is used strictly for the following purposes (資料僅用於以下目的):</p>
+        <ul>
+            <li><strong>Authentication (身分驗證):</strong> To allow you to log in securely using your Google account.</li>
+            <li><strong>App Functionality (功能運作):</strong> To maintain your user session and history records associated with your account.</li>
+            <li><strong>No Advertising (無廣告用途):</strong> We do not use Google user data for advertisement purposes. (我們不會將 Google 使用者資料用於廣告目的。)</li>
+            <li><strong>No Selling (禁止販售):</strong> We do not sell Google user data to third parties. (我們不會將 Google 使用者資料販售給第三方。)</li>
+        </ul>
+        
+        <h4>3. Data Storage (資料儲存)</h4>
+        <p>Google user data is stored securely on our encrypted servers and is retained only as long as necessary to provide the service. (Google 使用者資料安全地儲存於我們的加密伺服器中，且僅在提供服務所需期間內保留。)</p>
+    </div>
     <h2>2. 資料傳輸安全 (Data Transmission Security)</h2>
     <p>我們全站採用強制性的 <strong>SSL/TLS 加密協定</strong>。無論是使用者端的圖片上傳，或是後端與 AI 模型間的 API 呼叫，所有數據傳輸皆在加密通道中進行，確保資料在傳輸過程中的機密性與完整性。
     </p>
