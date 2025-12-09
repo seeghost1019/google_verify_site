@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>114年度嘉榮永續生活行動提案 - 決策輔助系統 (Firebase版)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f0fdf4; color: #1a202c; }
+        .chart-container { position: relative; width: 100%; max-width: 800px; margin: 0 auto; height: 400px; max-height: 500px; }
+        @media (max-width: 640px) { .chart-container { height: 300px; } }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .active-tab { border-bottom: 2px solid #166534; color: #166534; font-weight: 700; }
+        .inactive-tab { color: #6b7280; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        /* Toast */
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 100; }
+        .toast { background-color: #064e3b; color: white; padding: 12px 24px; border-radius: 8px; margin-top: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 2.5s forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        
+        /* Config Modal */
+        #config-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; justify-content: center; align-items: center; }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <!-- Config Screen -->
+    <div id="config-overlay" class="hidden">
+        <div class="bg-white p-8 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 class="text-2xl font-bold text-emerald-800 mb-2">設定連線模式</h2>
+            <p class="text-gray-600 mb-6 text-sm">請選擇您要使用的運作模式：</p>
+            
+            <div class="space-y-4">
+                <!-- Cloud Option -->
+                <div class="border border-emerald-200 bg-emerald-50 rounded-lg p-4 transition">
+                    <label class="font-bold text-emerald-900 block mb-2 flex items-center gap-2">
+                        🔥 Firebase 雲端連線 (推薦)
+                        <span class="bg-red-500 text-white text-xs px-2 py-0.5 rounded">即時</span>
+                    </label>
+                    <p class="text-xs text-gray-600 mb-2">請將 Firebase Console 中的 <code class="bg-gray-200 px-1 rounded">firebaseConfig</code> 物件內容貼在下方：</p>
+                    <textarea id="firebase-config-input" rows="6" placeholder='{
+  "apiKey": "AIzaSy...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}' class="w-full border border-gray-300 rounded p-2 mb-2 text-xs font-mono focus:ring-2 focus:ring-emerald-500 outline-none"></textarea>
+                    <button onclick="saveFirebaseConfig()" class="w-full bg-emerald-600 text-white font-bold py-2 rounded hover:bg-emerald-700 transition text-sm">連線並開始</button>
+                </div>
+
+                <div class="relative flex py-2 items-center">
+                    <div class="flex-grow border-t border-gray-300"></div>
+                    <span class="flex-shrink mx-4 text-gray-400 text-xs">或是</span>
+                    <div class="flex-grow border-t border-gray-300"></div>
+                </div>
+
+                <!-- Local Option -->
+                <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition cursor-pointer" onclick="useLocalMode()">
+                    <label class="font-bold text-gray-800 block cursor-pointer">💻 單機演示模式 (不需網路)</label>
+                    <p class="text-xs text-gray-500 mb-3">票數僅儲存在這台電腦上，適合展示用。</p>
+                    <button class="w-full bg-gray-600 text-white font-bold py-2 rounded hover:bg-gray-700 transition text-sm">使用單機模式</button>
+                </div>
+            </div>
+            <div class="mt-4 text-xs text-gray-400 text-center">
+                * 貼心提醒：請確認您的 Firebase Firestore 規則已設為測試模式 (Test Mode)。
+            </div>
+        </div>
+    </div>
+
+    <!-- Navbar -->
+    <header class="bg-emerald-800 text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-2 md:mb-0 text-center md:text-left">
+                <h1 class="text-xl md:text-2xl font-bold">114年度永續生活行動提案</h1>
+                <p class="text-sm text-emerald-100">決策輔助系統 <span id="mode-indicator" class="ml-2 bg-white/20 px-2 py-0.5 rounded text-xs">...</span></p>
+            </div>
+            <nav class="flex gap-4 text-sm items-center flex-wrap justify-center">
+                <button onclick="scrollToSection('strategy-section')" class="hover:text-emerald-200 transition">策略分析</button>
+                <button onclick="scrollToSection('catalog-section')" class="hover:text-emerald-200 transition">八大面向總覽</button>
+                <button onclick="openResults()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-full font-bold shadow-md transition transform hover:scale-105 flex items-center gap-2">
+                    <span>🏆</span> <span id="nav-live-count">查看即時戰況</span>
+                </button>
+                <button onclick="resetConfig()" class="text-xs text-emerald-300 underline hover:text-white" title="重設連線">⚙️</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 space-y-12">
+        <!-- Strategy Section -->
+        <section id="strategy-section" class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+            <div class="mb-6">
+                <h3 class="text-2xl font-bold text-emerald-800 flex items-center gap-2"><span>📊</span> 提案策略分析矩陣</h3>
+                <p class="text-gray-500 mt-2">點擊氣泡可查看詳情並進行投票。</p>
+            </div>
+            <div class="w-full flex justify-center"><div class="chart-container"><canvas id="strategyChart"></canvas></div></div>
+            <div class="mt-4 flex flex-wrap gap-4 justify-center text-sm text-gray-500">
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> 方案 A (制度)</div>
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span> 方案 B (行動)</div>
+            </div>
+        </section>
+
+        <!-- Catalog Section -->
+        <section id="catalog-section" class="space-y-6">
+            <div class="border-l-4 border-emerald-600 pl-4 flex justify-between items-end">
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-800">八大面向提案總覽</h3>
+                    <p class="text-gray-600 mt-1">點擊卡片展開 A/B 方案並投下神聖的一票。</p>
+                </div>
+                <div class="hidden md:block text-right">
+                    <p id="status-text" class="text-sm text-emerald-600 font-bold">🟢 系統就緒</p>
+                    <p id="sub-status-text" class="text-xs text-gray-400">等待操作</p>
+                </div>
+            </div>
+            <div id="categories-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"></div>
+        </section>
+
+        <!-- Detail Modal -->
+        <section id="detail-view" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative animate-fade-in">
+                <button onclick="closeDetail()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 text-2xl font-bold">&times;</button>
+                <div id="detail-content" class="p-6 md:p-10"></div>
+            </div>
+        </section>
+
+        <!-- Results Modal -->
+        <section id="results-view" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-fade-in">
+                <button onclick="closeResults()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 text-2xl font-bold">&times;</button>
+                <div class="p-8">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="text-3xl font-bold text-emerald-800 flex items-center gap-2">🏆 即時票選排行榜</h2>
+                        <span id="results-badge" class="bg-gray-600 text-white text-xs px-2 py-1 rounded">Local</span>
+                    </div>
+                    <p class="text-gray-600 mb-6">全體同仁的投票結果。</p>
+                    <div class="chart-container mb-6"><canvas id="resultsChart"></canvas></div>
+                    <div class="flex justify-end gap-4">
+                         <button onclick="resetVotes()" class="text-red-500 hover:text-red-700 text-sm font-medium underline mr-auto">⚠️ 重置所有票數</button>
+                        <button onclick="closeResults()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-medium transition">關閉</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div id="toast-container"></div>
+    </main>
+
+    <footer class="bg-stone-100 border-t border-stone-200 mt-12 py-8 text-center text-gray-500 text-sm">
+        <p>© 114年度嘉榮永續生活行動提案競賽 - 決策輔助系統</p>
+    </footer>
+
+    <!-- Import Firebase (ES Modules) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, increment } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+
+        // Global Firebase vars
+        window.firebaseApp = null;
+        window.db = null;
+        window.firestoreModules = { collection, doc, setDoc, onSnapshot, updateDoc, increment };
+
+        window.initFirebase = function(config) {
+            try {
+                window.firebaseApp = initializeApp(config);
+                window.db = getFirestore(window.firebaseApp);
+                console.log("Firebase initialized");
+                
+                // Start Listening
+                const votesCol = collection(window.db, "votes");
+                onSnapshot(votesCol, (snapshot) => {
+                    const newVotes = {};
+                    snapshot.forEach((doc) => {
+                        newVotes[doc.id] = doc.data().count;
+                    });
+                    window.updateGlobalVotes(newVotes);
+                });
+                return true;
+            } catch (e) {
+                console.error("Firebase init error", e);
+                alert("Firebase 連線失敗，請檢查設定檔格式是否正確。\n" + e.message);
+                return false;
+            }
+        };
+
+        window.castVoteFirebase = async function(id, type) {
+            if (!window.db) return;
+            const key = `${id}-${type}`;
+            const docRef = doc(window.db, "votes", key);
+            try {
+                // Use setDoc with merge to handle both create and update
+                await setDoc(docRef, { count: increment(1) }, { merge: true });
+                window.showToast(`🔥 已投給 #${key} (雲端同步)`);
+            } catch (e) {
+                console.error("Vote Error", e);
+                alert("投票失敗：請檢查 Firestore 規則是否已設為 Test Mode (允許讀寫)。\n" + e.message);
+            }
+        }
+        
+        window.resetVotesFirebase = async function() {
+            // Firestore doesn't support "delete collection" from client easily.
+            // We will just alert user.
+            alert("Firebase 模式下，請直接到 Firebase Console 後台刪除 'votes' 集合中的文件即可重置。");
+        }
+    </script>
+
+    <script>
+        // --- DATA ---
+        const proposalsData = [
+            { id: "01", name: "節能省電", slogan: "省電動一動", icon: "⚡", planA: { type: "A", title: "綠色出勤，離室斷電", desc: "建立離室檢核掛牌制度。", effort: 3, impact: 7, action: "製作掛牌，離開翻牌確認。" }, planB: { type: "B", title: "週末拔插頭，待機歸零", desc: "週五下班拔除非必要插頭。", effort: 2, impact: 6, action: "標示插座，週五廣播執行。" } },
+            { id: "02", name: "省水有道", slogan: "滴水不漏掉", icon: "💧", planA: { type: "A", title: "惜水如金，教具清洗SOP", desc: "改浸泡清洗，廢水再利用。", effort: 4, impact: 6, action: "建立三段式清洗流程。" }, planB: { type: "B", title: "除溼回收，澆灌綠意", desc: "回收除濕機水澆花拖地。", effort: 3, impact: 5, action: "設置回收水桶再利用。" } },
+            { id: "03", name: "減塑生活", slogan: "環保最時尚", icon: "🛍️", planA: { type: "A", title: "無塑社區行，裝備袋變身", desc: "使用模組化收納箱取代塑膠袋。", effort: 5, impact: 8, action: "導入標籤化收納箱。" }, planB: { type: "B", title: "會議不瓶裝，茶水自己裝", desc: "停止提供瓶裝水，改大桶茶。", effort: 2, impact: 7, action: "自備環保杯，現場供茶桶。" } },
+            { id: "04", name: "廢棄減量", slogan: "回收不麻煩", icon: "📱", planA: { type: "A", title: "雲端衛教，掃碼取代傳單", desc: "衛教單張數位化掃QR Code。", effort: 3, impact: 9, action: "製作圖卡上傳雲端。" }, planB: { type: "B", title: "廢紙重生，筆記傳承", desc: "單面廢紙製成便條紙。", effort: 4, impact: 4, action: "裁切裝訂內部使用。" } },
+            { id: "05", name: "低碳飲食", slogan: "吃當季最好", icon: "🥦", planA: { type: "A", title: "嘉鄉味・綠食力 (強力推薦)", desc: "衛教融入嘉義在地當季食材。", effort: 2, impact: 9, action: "教長者吃在地、吃當季。" }, planB: { type: "B", title: "惜食光盤，健康不留餘", desc: "推動適量點餐與打包。", effort: 3, impact: 5, action: "調查飯量，鼓勵打包。" } },
+            { id: "06", name: "綠色交通", slogan: "出門少排碳", icon: "🚗", planA: { type: "A", title: "共乘特攻隊，路徑最佳化", desc: "強制滿載共乘與順路巡迴。", effort: 7, impact: 8, action: "排班審查路線。" }, planB: { type: "B", title: "視訊零距離，會議免奔波", desc: "行政會議改線上進行。", effort: 2, impact: 8, action: "非必要改Teams/Line。" } },
+            { id: "07", name: "綠色採購", slogan: "買對更永續", icon: "🛒", planA: { type: "A", title: "綠色心意，禮輕情意重", desc: "贈品選用環保標章產品。", effort: 2, impact: 6, action: "優先採購環保標章品。" }, planB: { type: "B", title: "補充代替購買，大桶划算", desc: "買大桶裝清潔劑自行分裝。", effort: 3, impact: 5, action: "買5L補充液填充舊瓶。" } },
+            { id: "08", name: "全員參與", slogan: "綠活一起行", icon: "🤝", planA: { type: "A", title: "社營中心綠色存摺", desc: "集點卡激勵同仁落實環保。", effort: 5, impact: 7, action: "自帶杯爬梯可集點。" }, planB: { type: "B", title: "舊愛新歡，好書交換", desc: "設置辦公室漂書站。", effort: 2, impact: 4, action: "設置漂書箱自由交換。" } }
+        ];
+
+        // --- STATE & CONFIG ---
+        let globalVotes = {}; 
+        let isLocalMode = true; // Default to local unless configured
+        
+        // --- INIT CHECK ---
+        function checkConfig() {
+            const savedMode = localStorage.getItem('app_mode');
+            const savedConfig = localStorage.getItem('firebase_config');
+
+            if (savedMode === 'firebase' && savedConfig) {
+                // Auto-login to firebase
+                isLocalMode = false;
+                // We need to wait for modules to load, so we use a small timeout or check
+                setTimeout(() => {
+                    if (window.initFirebase) {
+                        const success = window.initFirebase(JSON.parse(savedConfig));
+                        if(success) {
+                            initCloudUI();
+                            return;
+                        }
+                    }
+                    // Fallback
+                    document.getElementById('config-overlay').classList.remove('hidden');
+                }, 500);
+            } else if (savedMode === 'local') {
+                initLocalMode();
+            } else {
+                // First time
+                document.getElementById('config-overlay').classList.remove('hidden');
+            }
+        }
+
+        function saveFirebaseConfig() {
+            const input = document.getElementById('firebase-config-input').value.trim();
+            try {
+                const config = JSON.parse(input); // Validate JSON
+                if (!config.apiKey || !config.projectId) throw new Error("缺少必要的 apiKey 或 projectId");
+                
+                // Try init
+                if (window.initFirebase(config)) {
+                    localStorage.setItem('firebase_config', JSON.stringify(config));
+                    localStorage.setItem('app_mode', 'firebase');
+                    isLocalMode = false;
+                    document.getElementById('config-overlay').classList.add('hidden');
+                    initCloudUI();
+                    showToast("Firebase 連線成功！");
+                }
+            } catch (e) {
+                alert("設定檔格式錯誤，請確保複製的是完整的 JSON 物件 (包含大括號)。\n" + e.message);
+            }
+        }
+
+        function useLocalMode() {
+            localStorage.setItem('app_mode', 'local');
+            isLocalMode = true;
+            document.getElementById('config-overlay').classList.add('hidden');
+            initLocalMode();
+            showToast("已切換至單機演示模式");
+        }
+
+        function resetConfig() {
+            localStorage.removeItem('app_mode');
+            localStorage.removeItem('firebase_config');
+            location.reload();
+        }
+
+        function initLocalMode() {
+            document.getElementById('mode-indicator').innerText = "單機模式";
+            document.getElementById('status-text').innerText = "💻 單機模式";
+            document.getElementById('sub-status-text').innerText = "數據儲存於本機";
+            document.getElementById('results-badge').innerText = "Local Storage";
+            document.getElementById('results-badge').className = "bg-gray-600 text-white text-xs px-2 py-1 rounded";
+            
+            // Load local votes
+            globalVotes = JSON.parse(localStorage.getItem('local_votes')) || {};
+            window.updateGlobalVotes(globalVotes);
+        }
+
+        function initCloudUI() {
+            document.getElementById('mode-indicator').innerText = "Firebase 連線";
+            document.getElementById('status-text').innerText = "🔥 雲端同步中";
+            document.getElementById('sub-status-text').innerText = "即時資料庫連線";
+            document.getElementById('results-badge').innerText = "Firebase Live";
+            document.getElementById('results-badge').className = "bg-orange-600 text-white text-xs px-2 py-1 rounded animate-pulse";
+        }
+
+        // --- VOTING ACTIONS ---
+        window.castVote = function(id, type, name, title) {
+            const key = `${id}-${type}`;
+            
+            if (isLocalMode) {
+                globalVotes[key] = (globalVotes[key] || 0) + 1;
+                window.updateGlobalVotes(globalVotes);
+                localStorage.setItem('local_votes', JSON.stringify(globalVotes));
+                showToast(`已投給 #${id}-${type} (本機)`);
+            } else {
+                // Firebase Mode
+                if (window.castVoteFirebase) {
+                    window.castVoteFirebase(id, type);
+                } else {
+                    alert("Firebase 模組尚未載入完成，請稍候");
+                }
+            }
+        }
+        
+        window.resetVotes = function() {
+            if(confirm("確定要重置所有票數嗎？")) {
+                if(isLocalMode) {
+                    globalVotes = {};
+                    localStorage.removeItem('local_votes');
+                    window.updateGlobalVotes({});
+                    closeResults();
+                    showToast("本機票數已重置");
+                } else {
+                    if (window.resetVotesFirebase) window.resetVotesFirebase();
+                }
+            }
+        }
+
+        // --- UI UPDATER (Exposed globally for modules to call) ---
+        window.updateGlobalVotes = function(newVotes) {
+            globalVotes = newVotes; // Update state
+            
+            // Update Detail Buttons
+            Object.keys(globalVotes).forEach(key => {
+                const countSpan = document.getElementById(`count-${key}`);
+                if (countSpan) countSpan.innerText = globalVotes[key];
+            });
+
+            // Update Results Chart if open
+            if (!document.getElementById('results-view').classList.contains('hidden')) {
+                renderResultsChart();
+            }
+
+            // Update Nav Total
+            const total = Object.values(globalVotes).reduce((a, b) => a + b, 0);
+            const navLabel = document.getElementById('nav-live-count');
+            if(navLabel) navLabel.innerText = total > 0 ? `目前總票數: ${total}` : '查看即時戰況';
+        }
+
+        // --- STANDARD UI FUNCTIONS ---
+        window.showToast = function(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+
+        function renderCategories() {
+            const grid = document.getElementById('categories-grid');
+            grid.innerHTML = proposalsData.map(cat => `
+                <div onclick="openDetail('${cat.id}')" class="bg-white rounded-xl shadow-sm border border-stone-100 p-6 cursor-pointer card-hover group transition-all duration-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-4xl bg-stone-50 p-3 rounded-full">${cat.icon}</span>
+                        <span class="text-xs font-bold text-gray-400">#${cat.id}</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-800 group-hover:text-emerald-700 transition">${cat.name}</h4>
+                    <p class="text-sm text-emerald-600 font-medium mb-2">${cat.slogan}</p>
+                    <div class="mt-4 flex gap-2">
+                        <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-100">方案 A</span>
+                        <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">方案 B</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openDetail(id) {
+            const cat = proposalsData.find(c => c.id === id);
+            if (!cat) return;
+            const contentDiv = document.getElementById('detail-content');
+            contentDiv.innerHTML = `
+                <div class="mb-6 border-b pb-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="text-4xl">${cat.icon}</span>
+                        <h2 class="text-3xl font-bold text-emerald-900">${cat.id} ${cat.name}</h2>
+                    </div>
+                    <p class="text-xl text-emerald-600 font-medium">${cat.slogan}</p>
+                </div>
+                <div class="flex border-b border-gray-200 mb-6">
+                    <button onclick="switchTab('planA')" id="tab-btn-A" class="active-tab py-2 px-6 text-lg transition-colors w-1/2 md:w-auto">方案 A (制度)</button>
+                    <button onclick="switchTab('planB')" id="tab-btn-B" class="inactive-tab py-2 px-6 text-lg transition-colors w-1/2 md:w-auto">方案 B (行動)</button>
+                </div>
+                <div id="content-planA" class="fade-in">${renderPlanHTML(cat.id, cat.planA, 'emerald')}</div>
+                <div id="content-planB" class="hidden fade-in">${renderPlanHTML(cat.id, cat.planB, 'blue')}</div>
+            `;
+            document.getElementById('detail-view').classList.remove('hidden');
+            switchTab('planA');
+        }
+
+        function renderPlanHTML(catId, plan, color) {
+            const bgClass = color === 'emerald' ? 'bg-emerald-50' : 'bg-blue-50';
+            const textClass = color === 'emerald' ? 'text-emerald-800' : 'text-blue-800';
+            const btnBg = color === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700';
+            const currentVotes = globalVotes[`${catId}-${plan.type}`] || 0;
+
+            return `
+                <div class="${bgClass} border ${color === 'emerald'?'border-emerald-200':'border-blue-200'} rounded-lg p-6 mb-6 relative">
+                    <div class="md:absolute md:top-6 md:right-6 mb-6 md:mb-0 z-10">
+                        <button onclick="castVote('${catId}', '${plan.type}', '${proposalsData.find(c=>c.id===catId).name}', '${plan.title}')"
+                                class="${btnBg} text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 transition transform hover:scale-105 active:scale-95 w-full md:w-auto justify-center ring-2 ring-white">
+                            <span class="text-xl animate-bounce">🗳️</span>
+                            <div class="text-left leading-tight">
+                                <span class="block font-bold text-sm">投我一票</span>
+                                <span class="block text-xs opacity-90 transition-all">目前 <span id="count-${catId}-${plan.type}" class="font-bold text-lg">${currentVotes}</span> 票</span>
+                            </div>
+                        </button>
+                    </div>
+                    <h3 class="text-2xl font-bold ${textClass} mb-2 pr-0 md:pr-40">${plan.title}</h3>
+                    <p class="text-gray-700 font-medium mb-4 pr-0 md:pr-40">${plan.desc}</p>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <p class="font-bold text-gray-800">具體做法：</p>
+                        <p class="text-gray-600">${plan.action}</p>
+                    </div>
+                    <div class="mt-4 flex gap-4 text-sm text-gray-500">
+                        <div class="flex flex-col"><span class="text-xs uppercase">難易度</span><div class="w-24 h-2 bg-gray-200 rounded-full mt-1"><div class="h-full ${color==='emerald'?'bg-emerald-500':'bg-blue-500'}" style="width: ${plan.effort * 10}%"></div></div></div>
+                        <div class="flex flex-col"><span class="text-xs uppercase">影響力</span><div class="w-24 h-2 bg-gray-200 rounded-full mt-1"><div class="h-full bg-yellow-400" style="width: ${plan.impact * 10}%"></div></div></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        window.switchTab = function(plan) {
+            const btnA = document.getElementById('tab-btn-A');
+            const btnB = document.getElementById('tab-btn-B');
+            const contentA = document.getElementById('content-planA');
+            const contentB = document.getElementById('content-planB');
+            
+            if(plan === 'planA') {
+                btnA.className = "active-tab py-2 px-6 text-lg transition-colors w-1/2 md:w-auto border-b-2 border-emerald-800 text-emerald-800 font-bold";
+                btnB.className = "inactive-tab py-2 px-6 text-lg transition-colors w-1/2 md:w-auto text-gray-500";
+                contentA.classList.remove('hidden'); contentB.classList.add('hidden');
+            } else {
+                btnB.className = "active-tab py-2 px-6 text-lg transition-colors w-1/2 md:w-auto border-b-2 border-blue-800 text-blue-800 font-bold";
+                btnA.className = "inactive-tab py-2 px-6 text-lg transition-colors w-1/2 md:w-auto text-gray-500";
+                contentB.classList.remove('hidden'); contentA.classList.add('hidden');
+            }
+        }
+
+        // --- Chart & Results ---
+        let resultsChartInstance = null;
+        window.openResults = function() { document.getElementById('results-view').classList.remove('hidden'); renderResultsChart(); }
+        window.closeResults = function() { document.getElementById('results-view').classList.add('hidden'); }
+        window.closeDetail = function() { document.getElementById('detail-view').classList.add('hidden'); }
+        window.scrollToSection = function(id) { document.getElementById(id).scrollIntoView({ behavior: 'smooth' }); }
+
+        function initChart() {
+            const ctx = document.getElementById('strategyChart').getContext('2d');
+            const dataPoints = [];
+            proposalsData.forEach(cat => {
+                dataPoints.push({ x: cat.planA.effort, y: cat.planA.impact, r: 12, category: cat.name, plan: 'A', title: cat.planA.title, id: cat.id });
+                dataPoints.push({ x: cat.planB.effort, y: cat.planB.impact, r: 10, category: cat.name, plan: 'B', title: cat.planB.title, id: cat.id });
+            });
+            new Chart(ctx, {
+                type: 'bubble',
+                data: { datasets: [{ label: '方案 A', data: dataPoints.filter(d=>d.plan==='A'), backgroundColor: 'rgba(16, 185, 129, 0.7)', borderColor: 'rgba(6, 95, 70, 1)' }, { label: '方案 B', data: dataPoints.filter(d=>d.plan==='B'), backgroundColor: 'rgba(59, 130, 246, 0.7)', borderColor: 'rgba(30, 64, 175, 1)' }] },
+                options: { responsive: true, maintainAspectRatio: false, scales: { x: { min: 0, max: 10, title: { display: true, text: '難易度 (右難)' }}, y: { min: 0, max: 10, title: { display: true, text: '影響力 (上高)' }}}, onClick: (e, el) => { if(el.length) openDetail(el[0].element.$context.raw.id); } }
+            });
+        }
+
+        function renderResultsChart() {
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            let rankedData = [];
+            proposalsData.forEach(cat => {
+                ['A', 'B'].forEach(type => {
+                    const key = `${cat.id}-${type}`;
+                    const count = globalVotes[key] || 0;
+                    if(count >= 0) {
+                        rankedData.push({
+                            label: `${cat.id}-${type} ${type==='A'?cat.planA.title:cat.planB.title}`,
+                            count: count,
+                            color: type==='A' ? 'rgba(16, 185, 129, 0.8)' : 'rgba(59, 130, 246, 0.8)'
+                        });
+                    }
+                });
+            });
+            rankedData.sort((a,b) => b.count - a.count);
+            
+            if (resultsChartInstance) resultsChartInstance.destroy();
+            resultsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: { labels: rankedData.map(d=>d.label.substring(0,15)+'...'), datasets: [{ label: '得票數', data: rankedData.map(d=>d.count), backgroundColor: rankedData.map(d=>d.color), borderRadius: 4 }] },
+                options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } } }
+            });
+        }
+
+        window.onload = function() { renderCategories(); initChart(); checkConfig(); };
+    </script>
+</body>
+</html>
