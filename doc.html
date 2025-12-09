@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>114年度嘉榮永續生活行動提案 - 互動決策系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f0fdf4; /* Light green background */
+            color: #1a202c;
+        }
+        /* Chart Container Styling per requirements */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px; /* max-w-2xl equivalent ish */
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px; /* Base height */
+            max-height: 500px;
+        }
+        @media (max-width: 640px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .active-tab {
+            border-bottom: 2px solid #166534; /* green-800 */
+            color: #166534;
+            font-weight: 700;
+        }
+        .inactive-tab {
+            color: #6b7280; /* gray-500 */
+        }
+        .hide {
+            display: none;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+    <!-- Chosen Palette: Nature Green & Clean White (Minimalist, Calm, Supportive) -->
+    <!-- Application Structure Plan: 
+         1. Header: Context and Goal.
+         2. Strategic Analysis (Scatter Plot): A high-level view mapping all 16 proposals on "Effort vs. Impact" to help the department choose wisely based on resources.
+         3. Proposal Catalog (Grid): The 8 dimensions presented as cards.
+         4. Detail View (Dynamic Section): When a category is clicked, it expands to show a side-by-side (or tabbed on mobile) comparison of Plan A and Plan B.
+         This structure moves from "Big Picture Strategy" to "Detailed Execution", facilitating decision-making for the department meeting.
+    -->
+    <!-- Visualization & Content Choices:
+         - Scatter Plot (Chart.js): Goal: Compare. Maps proposals by 'Implementation Difficulty' vs 'Sustainability Impact'. Interaction: Click bubble to view details. Justification: Helps visualize "Quick Wins" vs "Strategic Projects".
+         - Comparison Cards (HTML/Tailwind): Goal: Inform & Compare. Shows text details of Plan A/B. Interaction: Toggle tabs. Justification: Text-heavy content needs readable structure.
+         - Progress/Status Indicators: Unicode icons.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <!-- Navbar / Header -->
+    <header class="bg-emerald-800 text-white shadow-lg sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-4 flex flex-col md:flex-row justify-between items-center">
+            <div class="mb-2 md:mb-0 text-center md:text-left">
+                <h1 class="text-xl md:text-2xl font-bold">114年度永續生活行動提案</h1>
+                <p class="text-sm text-emerald-100">提案單位：家醫部 社區健康營造中心</p>
+            </div>
+            <nav class="flex gap-4 text-sm">
+                <button onclick="scrollToSection('strategy-section')" class="hover:text-emerald-200 transition">策略分析</button>
+                <button onclick="scrollToSection('catalog-section')" class="hover:text-emerald-200 transition">八大面向總覽</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 space-y-12">
+
+        <!-- Introduction Section -->
+        <section class="max-w-4xl mx-auto text-center space-y-4">
+            <h2 class="text-3xl font-bold text-emerald-900">永續行動，從我們做起</h2>
+            <p class="text-lg text-gray-600 leading-relaxed">
+                本平台旨在協助社區健康營造中心同仁，於科室會議中快速瀏覽、分析並決策適合本單位執行的永續提案。
+                我們將八大面向的行動守則轉化為 **16 個具體執行方案**。請透過下方的策略分析圖與詳細內容，找出「效益最高、負擔最小」的最佳解。
+            </p>
+        </section>
+
+        <!-- Strategy Section: Scatter Plot -->
+        <section id="strategy-section" class="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+            <div class="mb-6">
+                <h3 class="text-2xl font-bold text-emerald-800 flex items-center gap-2">
+                    <span>📊</span> 提案策略分析矩陣
+                </h3>
+                <p class="text-gray-500 mt-2">
+                    此圖表根據**「執行難易度」**（X軸，越右越難）與**「預期影響力」**（Y軸，越高越好）將所有方案進行定位。
+                    <br><span class="text-sm font-medium text-emerald-600">點擊圖表中的圓點，可直接跳轉至該提案詳情。</span>
+                </p>
+            </div>
+            
+            <div class="w-full flex justify-center">
+                <div class="chart-container">
+                    <canvas id="strategyChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="mt-4 flex flex-wrap gap-4 justify-center text-sm text-gray-500">
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> 方案 A (制度建立)</div>
+                <div class="flex items-center gap-2"><span class="w-3 h-3 rounded-full bg-blue-500"></span> 方案 B (具體行動)</div>
+            </div>
+        </section>
+
+        <!-- Catalog Section: The 8 Dimensions Grid -->
+        <section id="catalog-section" class="space-y-6">
+            <div class="border-l-4 border-emerald-600 pl-4">
+                <h3 class="text-2xl font-bold text-gray-800">八大面向提案總覽</h3>
+                <p class="text-gray-600 mt-1">點擊下方卡片展開詳細的 A/B 方案比較。</p>
+            </div>
+
+            <!-- Dynamic Grid Generated by JS -->
+            <div id="categories-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Cards will be injected here -->
+            </div>
+        </section>
+
+        <!-- Details Modal / Section (Hidden by default, shown on interaction) -->
+        <section id="detail-view" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative animate-fade-in">
+                <!-- Close Button -->
+                <button onclick="closeDetail()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 text-2xl font-bold">&times;</button>
+                
+                <!-- Content Container -->
+                <div id="detail-content" class="p-6 md:p-10">
+                    <!-- Dynamic Detail Content -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-stone-100 border-t border-stone-200 mt-12 py-8 text-center text-gray-500 text-sm">
+        <p>© 114年度嘉榮永續生活行動提案競賽 - 決策輔助系統</p>
+        <p class="mt-2">Designed for Department of Family Medicine</p>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- Data: The 16 Proposals ---
+        // Scores (effort, impact) are estimates based on the text analysis.
+        // Effort: 1 (Easy) to 10 (Hard). Impact: 1 (Low) to 10 (High).
+        const proposalsData = [
+            {
+                id: "01",
+                name: "節能省電",
+                slogan: "省電動一動",
+                icon: "⚡",
+                desc: "針對辦公室無人時段的能源管理。",
+                planA: {
+                    type: "A",
+                    title: "綠色出勤，離室斷電",
+                    desc: "建立「最後離室者檢核機制」與掛牌制度。",
+                    background: "中心常全員外出，辦公室長時間無人，易忘記關電源。",
+                    action: "製作「綠色出勤掛牌」，離室時執行斷電三步驟並翻牌。",
+                    steps: ["盤點非必要電源", "製作掛牌", "實施斷電檢查"],
+                    resources: "行政人力、廢紙板製作掛牌 (無經費)",
+                    effort: 3, impact: 7
+                },
+                planB: {
+                    type: "B",
+                    title: "週末拔插頭，待機歸零",
+                    desc: "針對週末長時段的待機電力進行切斷。",
+                    background: "週末48小時無人，設備待機電力累積驚人。",
+                    action: "週五下班「拔插頭運動」，值日生巡視。",
+                    steps: ["標示可斷電插座", "週五廣播提醒", "統計節能數據"],
+                    resources: "綠色圓點貼紙 (約50元)",
+                    effort: 2, impact: 6
+                }
+            },
+            {
+                id: "02",
+                name: "省水有道",
+                slogan: "滴水不漏掉",
+                icon: "💧",
+                desc: "優化活動器材清洗與循環水利用。",
+                planA: {
+                    type: "A",
+                    title: "惜水如金，教具清洗SOP",
+                    desc: "改變清洗習慣，由長流水改為浸泡。",
+                    background: "清洗大量衛教軟墊器材時，常開大水直沖浪費。",
+                    action: "建立「浸泡→小水洗→廢水沖地」SOP。",
+                    steps: ["張貼SOP圖示", "購置浸泡桶", "落實執行"],
+                    resources: "大型整理箱 (300-500元)",
+                    effort: 4, impact: 6
+                },
+                planB: {
+                    type: "B",
+                    title: "除溼回收，澆灌綠意",
+                    desc: "回收除濕機與冷氣冷凝水。",
+                    background: "嘉義潮濕，除濕機水箱水直接倒掉很可惜。",
+                    action: "設置回收桶，用於澆花或拖地。",
+                    steps: ["設置回收桶", "標示非飲用", "值日生澆灌"],
+                    resources: "水桶、貼紙 (200元)",
+                    effort: 3, impact: 5
+                }
+            },
+            {
+                id: "03",
+                name: "減塑生活",
+                slogan: "環保最時尚",
+                icon: "🛍️",
+                desc: "減少活動物資與會議的一次性塑膠。",
+                planA: {
+                    type: "A",
+                    title: "無塑社區行，裝備袋大變身",
+                    desc: "導入模組化收納箱，淘汰紅白塑膠袋。",
+                    background: "出隊常亂塞塑膠袋，製造垃圾且不專業。",
+                    action: "使用標籤化收納箱/布袋，一箱提了就走。",
+                    steps: ["盤點採購箱子", "分類標示", "向民眾宣導自備袋"],
+                    resources: "整理箱/環保袋 (約1000元)",
+                    effort: 5, impact: 8
+                },
+                planB: {
+                    type: "B",
+                    title: "會議不瓶裝，茶水自己裝",
+                    desc: "全面停止提供瓶裝水。",
+                    background: "志工培訓或會議製造大量寶特瓶垃圾。",
+                    action: "僅提供大桶茶水，通知請自備杯子。",
+                    steps: ["修改會議通知", "購置茶桶", "現場宣導"],
+                    resources: "大茶桶 (500元)",
+                    effort: 2, impact: 7
+                }
+            },
+            {
+                id: "04",
+                name: "廢棄減量",
+                slogan: "回收不麻煩",
+                icon: "📱",
+                desc: "推動無紙化衛教與廢紙再利用。",
+                planA: {
+                    type: "A",
+                    title: "雲端衛教，掃碼取代傳單",
+                    desc: "衛教單張數位化，減少印刷。",
+                    background: "紙本單張常被隨手丟棄，且庫存管理麻煩。",
+                    action: "製作圖卡上傳雲端，現場掃QR Code。",
+                    steps: ["教材數位化", "製作QR立牌", "引導掃描"],
+                    resources: "護貝立牌 (無經費)",
+                    effort: 3, impact: 9
+                },
+                planB: {
+                    type: "B",
+                    title: "廢紙重生，筆記傳承",
+                    desc: "單面廢紙製成便條紙。",
+                    background: "行政單面廢紙直接碎掉很可惜。",
+                    action: "裁切裝訂成內部用便條紙。",
+                    steps: ["設置回收盒", "裁切裝訂", "分發使用"],
+                    resources: "現有裁紙機 (無經費)",
+                    effort: 4, impact: 4
+                }
+            },
+            {
+                id: "05",
+                name: "低碳飲食",
+                slogan: "吃當季最好",
+                icon: "🥦",
+                desc: "結合在地農業與惜食觀念。",
+                planA: {
+                    type: "A",
+                    title: "嘉鄉味・綠食力 (首選推薦)",
+                    desc: "將「吃在地」融入社區長者營養衛教。",
+                    background: "缺乏結合在地食材的系統性推廣，長者觀念模糊。",
+                    action: "教導長者吃嘉義當季農產，健康又減碳。",
+                    steps: ["製作當季圖卡", "社區短講", "長者分享餐盤"],
+                    resources: "現有人力、少量印刷",
+                    effort: 2, impact: 9
+                },
+                planB: {
+                    type: "B",
+                    title: "惜食光盤，健康不留餘",
+                    desc: "推動適量點餐與打包。",
+                    background: "共餐或便當常有剩食浪費。",
+                    action: "調查飯量需求，宣導自備盒打包。",
+                    steps: ["增加飯量調查", "餐後宣導", "統計廚餘"],
+                    resources: "無",
+                    effort: 3, impact: 5
+                }
+            },
+            {
+                id: "06",
+                name: "綠色交通",
+                slogan: "出門少排碳",
+                icon: "🚗",
+                desc: "優化出勤路徑與會議模式。",
+                planA: {
+                    type: "A",
+                    title: "共乘特攻隊，路徑最佳化",
+                    desc: "強制執行滿載共乘與順路巡迴。",
+                    background: "多車同往或反覆往返造成高油耗。",
+                    action: "排班審查路線，安排連續式巡迴。",
+                    steps: ["排班路徑審查", "里程登記", "檢討油耗"],
+                    resources: "Google Maps, 主管統籌",
+                    effort: 7, impact: 8
+                },
+                planB: {
+                    type: "B",
+                    title: "視訊零距離，會議免奔波",
+                    desc: "行政會議改採線上進行。",
+                    background: "嘉義-灣橋往返開會耗時耗能。",
+                    action: "非必要實體會議改Teams/Line。",
+                    steps: ["盤點會議", "建立SOP", "統計減碳量"],
+                    resources: "現有視訊設備",
+                    effort: 2, impact: 8
+                }
+            },
+            {
+                id: "07",
+                name: "綠色採購",
+                slogan: "買對更永續",
+                icon: "🛒",
+                desc: "優先採購環保標章產品。",
+                planA: {
+                    type: "A",
+                    title: "綠色心意，禮輕情意重",
+                    desc: "活動贈品選用環保標章產品。",
+                    background: "贈品常忽略環境成本。",
+                    action: "改買環保標章洗碗精或在地農產。",
+                    steps: ["篩選綠色商品", "調整採購", "宣導綠色消費"],
+                    resources: "調整預算分配",
+                    effort: 2, impact: 6
+                },
+                planB: {
+                    type: "B",
+                    title: "補充代替購買，大桶更划算",
+                    desc: "採購大桶裝清潔劑自行分裝。",
+                    background: "小瓶裝製造大量塑膠罐垃圾。",
+                    action: "買5L/10L補充液填充舊瓶。",
+                    steps: ["改購大桶裝", "定期補充", "記錄減瓶量"],
+                    resources: "漏斗",
+                    effort: 3, impact: 5
+                }
+            },
+            {
+                id: "08",
+                name: "全員參與",
+                slogan: "綠活一起行",
+                icon: "🤝",
+                desc: "內部激勵與分享機制。",
+                planA: {
+                    type: "A",
+                    title: "社營中心綠色存摺",
+                    desc: "集點卡激勵同仁落實環保。",
+                    background: "忙碌易忽略環保細節，缺乏誘因。",
+                    action: "自帶杯、爬梯可集點，換下午茶。",
+                    steps: ["製作集點卡", "榮譽互認", "季結算獎勵"],
+                    resources: "小獎勵品 (主管贊助)",
+                    effort: 5, impact: 7
+                },
+                planB: {
+                    type: "B",
+                    title: "舊愛新歡，好書交換",
+                    desc: "設置辦公室漂書站。",
+                    background: "家中閒置書籍可循環利用。",
+                    action: "設置漂書箱，自由借閱交換。",
+                    steps: ["整理書櫃", "號召捐書", "定期維護"],
+                    resources: "空書櫃",
+                    effort: 2, impact: 4
+                }
+            }
+        ];
+
+        // --- Chart.js Initialization ---
+        function initChart() {
+            const ctx = document.getElementById('strategyChart').getContext('2d');
+            
+            // Prepare data for Scatter Plot
+            const dataPoints = [];
+            proposalsData.forEach(cat => {
+                // Plan A Point
+                dataPoints.push({
+                    x: cat.planA.effort,
+                    y: cat.planA.impact,
+                    r: 12, // bubble radius
+                    category: cat.name,
+                    plan: 'A',
+                    title: cat.planA.title,
+                    id: cat.id
+                });
+                // Plan B Point
+                dataPoints.push({
+                    x: cat.planB.effort,
+                    y: cat.planB.impact,
+                    r: 10, // slightly smaller
+                    category: cat.name,
+                    plan: 'B',
+                    title: cat.planB.title,
+                    id: cat.id
+                });
+            });
+
+            new Chart(ctx, {
+                type: 'bubble',
+                data: {
+                    datasets: [{
+                        label: '方案 A (制度)',
+                        data: dataPoints.filter(d => d.plan === 'A'),
+                        backgroundColor: 'rgba(16, 185, 129, 0.7)', // Emerald 500
+                        borderColor: 'rgba(6, 95, 70, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '方案 B (行動)',
+                        data: dataPoints.filter(d => d.plan === 'B'),
+                        backgroundColor: 'rgba(59, 130, 246, 0.7)', // Blue 500
+                        borderColor: 'rgba(30, 64, 175, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: '執行難易度 (越右越難)' },
+                            min: 0, max: 10,
+                            grid: { color: '#e5e7eb' }
+                        },
+                        y: {
+                            title: { display: true, text: '預期影響力 (越高越好)' },
+                            min: 0, max: 10,
+                            grid: { color: '#e5e7eb' }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const point = context.raw;
+                                    return `${point.category} [${point.plan}]: ${point.title}`;
+                                }
+                            }
+                        },
+                        legend: { position: 'bottom' }
+                    },
+                    onClick: (e, activeEls) => {
+                        if (activeEls.length > 0) {
+                            const point = activeEls[0].element.$context.raw;
+                            openDetail(point.id);
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- DOM Rendering ---
+        function renderCategories() {
+            const grid = document.getElementById('categories-grid');
+            grid.innerHTML = proposalsData.map(cat => `
+                <div onclick="openDetail('${cat.id}')" class="bg-white rounded-xl shadow-sm border border-stone-100 p-6 cursor-pointer card-hover group transition-all duration-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-4xl bg-stone-50 p-3 rounded-full">${cat.icon}</span>
+                        <span class="text-xs font-bold text-gray-400">#${cat.id}</span>
+                    </div>
+                    <h4 class="text-xl font-bold text-gray-800 group-hover:text-emerald-700 transition">${cat.name}</h4>
+                    <p class="text-sm text-emerald-600 font-medium mb-2">${cat.slogan}</p>
+                    <p class="text-gray-500 text-sm line-clamp-2">${cat.desc}</p>
+                    <div class="mt-4 flex gap-2">
+                        <span class="text-xs bg-emerald-50 text-emerald-700 px-2 py-1 rounded border border-emerald-100">方案 A</span>
+                        <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">方案 B</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- Modal Logic ---
+        function openDetail(id) {
+            const cat = proposalsData.find(c => c.id === id);
+            if (!cat) return;
+
+            const contentDiv = document.getElementById('detail-content');
+            contentDiv.innerHTML = `
+                <div class="mb-8 border-b pb-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <span class="text-4xl">${cat.icon}</span>
+                        <h2 class="text-3xl font-bold text-emerald-900">${cat.id} ${cat.name}</h2>
+                    </div>
+                    <p class="text-xl text-emerald-600 font-medium">${cat.slogan}</p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="flex border-b border-gray-200 mb-6">
+                    <button onclick="switchTab('planA')" id="tab-btn-A" class="active-tab py-2 px-6 text-lg transition-colors">方案 A (制度面)</button>
+                    <button onclick="switchTab('planB')" id="tab-btn-B" class="inactive-tab py-2 px-6 text-lg transition-colors">方案 B (行動面)</button>
+                </div>
+
+                <!-- Plan A Content -->
+                <div id="content-planA" class="fade-in">
+                    ${renderPlanHTML(cat.planA, 'emerald')}
+                </div>
+                
+                <!-- Plan B Content (Hidden) -->
+                <div id="content-planB" class="hidden fade-in">
+                    ${renderPlanHTML(cat.planB, 'blue')}
+                </div>
+            `;
+
+            document.getElementById('detail-view').classList.remove('hidden');
+            // Reset tab state
+            switchTab('planA'); 
+        }
+
+        function renderPlanHTML(plan, color) {
+            const bgClass = color === 'emerald' ? 'bg-emerald-50' : 'bg-blue-50';
+            const textClass = color === 'emerald' ? 'text-emerald-800' : 'text-blue-800';
+            const borderClass = color === 'emerald' ? 'border-emerald-200' : 'border-blue-200';
+
+            return `
+                <div class="${bgClass} border ${borderClass} rounded-lg p-6 mb-6">
+                    <h3 class="text-2xl font-bold ${textClass} mb-2">${plan.title}</h3>
+                    <p class="text-gray-700 font-medium mb-4">${plan.desc}</p>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-gray-800 mb-2">提案背景</h4>
+                            <p class="text-gray-600 text-sm mb-4">${plan.background}</p>
+                            
+                            <h4 class="font-bold text-gray-800 mb-2">具體做法</h4>
+                            <p class="text-gray-600 text-sm mb-4">${plan.action}</p>
+                        </div>
+                        <div>
+                             <h4 class="font-bold text-gray-800 mb-2">執行步驟</h4>
+                             <ul class="list-disc list-inside text-gray-600 text-sm mb-4 space-y-1">
+                                ${plan.steps.map(s => `<li>${s}</li>`).join('')}
+                             </ul>
+
+                             <h4 class="font-bold text-gray-800 mb-2">需要資源</h4>
+                             <p class="text-gray-600 text-sm bg-white p-2 rounded border border-gray-100 shadow-sm">${plan.resources}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Analysis Tags -->
+                <div class="flex gap-4 items-center text-sm text-gray-500">
+                    <div class="flex flex-col">
+                        <span class="text-xs uppercase tracking-wide">難易度</span>
+                        <div class="w-24 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                            <div class="h-full ${color === 'emerald' ? 'bg-emerald-500' : 'bg-blue-500'}" style="width: ${plan.effort * 10}%"></div>
+                        </div>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs uppercase tracking-wide">影響力</span>
+                        <div class="w-24 h-2 bg-gray-200 rounded-full mt-1 overflow-hidden">
+                            <div class="h-full bg-yellow-400" style="width: ${plan.impact * 10}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function switchTab(plan) {
+            const btnA = document.getElementById('tab-btn-A');
+            const btnB = document.getElementById('tab-btn-B');
+            const contentA = document.getElementById('content-planA');
+            const contentB = document.getElementById('content-planB');
+
+            if (plan === 'planA') {
+                btnA.classList.add('active-tab', 'text-emerald-800');
+                btnA.classList.remove('inactive-tab', 'text-gray-500');
+                btnB.classList.add('inactive-tab', 'text-gray-500');
+                btnB.classList.remove('active-tab', 'text-blue-800', 'border-blue-800');
+                btnB.style.borderBottom = 'none';
+                btnA.style.borderBottom = '2px solid #065f46'; // emerald-800
+
+                contentA.classList.remove('hidden');
+                contentB.classList.add('hidden');
+            } else {
+                btnB.classList.add('active-tab', 'text-blue-800');
+                btnB.classList.remove('inactive-tab', 'text-gray-500');
+                btnA.classList.add('inactive-tab', 'text-gray-500');
+                btnA.classList.remove('active-tab', 'text-emerald-800', 'border-emerald-800');
+                btnA.style.borderBottom = 'none';
+                btnB.style.borderBottom = '2px solid #1e40af'; // blue-800
+
+                contentB.classList.remove('hidden');
+                contentA.classList.add('hidden');
+            }
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-view').classList.add('hidden');
+        }
+        
+        // Close modal on outside click
+        document.getElementById('detail-view').addEventListener('click', function(e) {
+            if (e.target === this) closeDetail();
+        });
+
+        function scrollToSection(id) {
+            document.getElementById(id).scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // --- Init ---
+        window.onload = function() {
+            renderCategories();
+            initChart();
+        };
+
+    </script>
+</body>
+</html>
