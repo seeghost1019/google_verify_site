@@ -50,19 +50,43 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
+        /* Toast Notification */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 100;
+        }
+        .toast {
+            background-color: #064e3b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease-out, fadeOut 0.5s ease-in 2.5s forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
     </style>
     <!-- Chosen Palette: Nature Green & Clean White (Minimalist, Calm, Supportive) -->
     <!-- Application Structure Plan: 
-         1. Header: Context and Goal.
-         2. Strategic Analysis (Scatter Plot): A high-level view mapping all 16 proposals on "Effort vs. Impact" to help the department choose wisely based on resources.
+         1. Header: Context, Goal, and Voting Results Trigger.
+         2. Strategic Analysis (Scatter Plot): A high-level view mapping all 16 proposals.
          3. Proposal Catalog (Grid): The 8 dimensions presented as cards.
-         4. Detail View (Dynamic Section): When a category is clicked, it expands to show a side-by-side (or tabbed on mobile) comparison of Plan A and Plan B.
-         This structure moves from "Big Picture Strategy" to "Detailed Execution", facilitating decision-making for the department meeting.
+         4. Detail View (Dynamic Section): Side-by-side comparison of Plan A/B with Voting Buttons.
+         5. Results Modal: Bar chart showing top voted proposals.
     -->
     <!-- Visualization & Content Choices:
-         - Scatter Plot (Chart.js): Goal: Compare. Maps proposals by 'Implementation Difficulty' vs 'Sustainability Impact'. Interaction: Click bubble to view details. Justification: Helps visualize "Quick Wins" vs "Strategic Projects".
-         - Comparison Cards (HTML/Tailwind): Goal: Inform & Compare. Shows text details of Plan A/B. Interaction: Toggle tabs. Justification: Text-heavy content needs readable structure.
-         - Progress/Status Indicators: Unicode icons.
+         - Scatter Plot (Chart.js): Compare Effort vs. Impact.
+         - Voting System (JS + LocalStorage): Interaction: Click to vote. Goal: Decision making.
+         - Results Bar Chart (Chart.js): Goal: Visualize consensus.
     -->
     <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
 </head>
@@ -75,9 +99,12 @@
                 <h1 class="text-xl md:text-2xl font-bold">114年度永續生活行動提案</h1>
                 <p class="text-sm text-emerald-100">提案單位：家醫部 社區健康營造中心</p>
             </div>
-            <nav class="flex gap-4 text-sm">
+            <nav class="flex gap-4 text-sm items-center">
                 <button onclick="scrollToSection('strategy-section')" class="hover:text-emerald-200 transition">策略分析</button>
                 <button onclick="scrollToSection('catalog-section')" class="hover:text-emerald-200 transition">八大面向總覽</button>
+                <button onclick="openResults()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-full font-bold shadow-md transition transform hover:scale-105 flex items-center gap-2">
+                    <span>🏆</span> 查看票選結果
+                </button>
             </nav>
         </div>
     </header>
@@ -142,6 +169,29 @@
                 </div>
             </div>
         </section>
+
+        <!-- Voting Results Modal -->
+        <section id="results-view" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto backdrop-blur-sm">
+            <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto relative animate-fade-in">
+                <button onclick="closeResults()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-2 text-2xl font-bold">&times;</button>
+                <div class="p-8">
+                    <h2 class="text-3xl font-bold text-emerald-800 mb-2 flex items-center gap-2">🏆 即時票選排行榜</h2>
+                    <p class="text-gray-600 mb-6">以下顯示目前得票數最高的提案（包含方案 A 與 B）。</p>
+                    
+                    <div class="chart-container mb-6">
+                        <canvas id="resultsChart"></canvas>
+                    </div>
+
+                    <div class="flex justify-end gap-4">
+                        <button onclick="resetVotes()" class="text-red-500 hover:text-red-700 text-sm font-medium underline">⚠️ 重置所有票數</button>
+                        <button onclick="closeResults()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-2 rounded-lg font-medium transition">關閉</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Toast Container -->
+        <div id="toast-container"></div>
 
     </main>
 
@@ -374,6 +424,50 @@
             }
         ];
 
+        // --- Voting Logic (LocalStorage) ---
+        // Format: { '01-A': 5, '02-B': 3, ... }
+        let voteCounts = JSON.parse(localStorage.getItem('voteCounts')) || {};
+
+        function castVote(id, type, name, title) {
+            const key = `${id}-${type}`;
+            voteCounts[key] = (voteCounts[key] || 0) + 1;
+            localStorage.setItem('voteCounts', JSON.stringify(voteCounts));
+            
+            // UI Feedback
+            showToast(`已投給 #${id} 方案 ${type}`);
+            
+            // Update button text immediately if visible
+            const btn = document.getElementById(`btn-vote-${key}`);
+            if (btn) {
+                const countSpan = document.getElementById(`count-${key}`);
+                if (countSpan) countSpan.innerText = voteCounts[key];
+            }
+        }
+
+        function getVoteCount(id, type) {
+            return voteCounts[`${id}-${type}`] || 0;
+        }
+
+        function resetVotes() {
+            if(confirm("確定要清空所有票數嗎？此動作無法復原。")) {
+                voteCounts = {};
+                localStorage.removeItem('voteCounts');
+                closeResults();
+                showToast("票數已重置");
+            }
+        }
+
+        function showToast(message) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
         // --- Chart.js Initialization ---
         function initChart() {
             const ctx = document.getElementById('strategyChart').getContext('2d');
@@ -457,6 +551,91 @@
             });
         }
 
+        // --- Results Chart Logic ---
+        let resultsChartInstance = null;
+
+        function openResults() {
+            document.getElementById('results-view').classList.remove('hidden');
+            renderResultsChart();
+        }
+
+        function closeResults() {
+            document.getElementById('results-view').classList.add('hidden');
+        }
+
+        function renderResultsChart() {
+            const ctx = document.getElementById('resultsChart').getContext('2d');
+            
+            // Prepare Data: Flatten and Sort
+            let rankedData = [];
+            proposalsData.forEach(cat => {
+                ['A', 'B'].forEach(type => {
+                    const key = `${cat.id}-${type}`;
+                    const count = voteCounts[key] || 0;
+                    const plan = type === 'A' ? cat.planA : cat.planB;
+                    // Only show items with votes, or top 5 if empty? Show all > 0 or top 10.
+                    // Let's show all items that have at least 1 vote. If none, show placeholder.
+                    if (count >= 0) { 
+                         rankedData.push({
+                            label: `${cat.id}-${type} ${plan.title.substring(0, 10)}...`,
+                            count: count,
+                            color: type === 'A' ? 'rgba(16, 185, 129, 0.8)' : 'rgba(59, 130, 246, 0.8)',
+                            fullTitle: plan.title
+                        });
+                    }
+                });
+            });
+
+            // Sort by count desc
+            rankedData.sort((a, b) => b.count - a.count);
+            // Take top 10
+            const topData = rankedData.slice(0, 10);
+
+            const labels = topData.map(d => d.label);
+            const data = topData.map(d => d.count);
+            const colors = topData.map(d => d.color);
+
+            if (resultsChartInstance) {
+                resultsChartInstance.destroy();
+            }
+
+            resultsChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '得票數',
+                        data: data,
+                        backgroundColor: colors,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y', // Horizontal bar chart
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => {
+                                    const idx = items[0].dataIndex;
+                                    return topData[idx].fullTitle;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+
         // --- DOM Rendering ---
         function renderCategories() {
             const grid = document.getElementById('categories-grid');
@@ -500,12 +679,12 @@
 
                 <!-- Plan A Content -->
                 <div id="content-planA" class="fade-in">
-                    ${renderPlanHTML(cat.planA, 'emerald')}
+                    ${renderPlanHTML(cat.id, cat.planA, 'emerald')}
                 </div>
                 
                 <!-- Plan B Content (Hidden) -->
                 <div id="content-planB" class="hidden fade-in">
-                    ${renderPlanHTML(cat.planB, 'blue')}
+                    ${renderPlanHTML(cat.id, cat.planB, 'blue')}
                 </div>
             `;
 
@@ -514,17 +693,32 @@
             switchTab('planA'); 
         }
 
-        function renderPlanHTML(plan, color) {
+        function renderPlanHTML(catId, plan, color) {
             const bgClass = color === 'emerald' ? 'bg-emerald-50' : 'bg-blue-50';
             const textClass = color === 'emerald' ? 'text-emerald-800' : 'text-blue-800';
             const borderClass = color === 'emerald' ? 'border-emerald-200' : 'border-blue-200';
+            const btnBgClass = color === 'emerald' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-blue-600 hover:bg-blue-700';
+            const currentVotes = getVoteCount(catId, plan.type);
 
             return `
-                <div class="${bgClass} border ${borderClass} rounded-lg p-6 mb-6">
-                    <h3 class="text-2xl font-bold ${textClass} mb-2">${plan.title}</h3>
-                    <p class="text-gray-700 font-medium mb-4">${plan.desc}</p>
+                <div class="${bgClass} border ${borderClass} rounded-lg p-6 mb-6 relative">
+                    <!-- Voting Button Block -->
+                    <div class="md:absolute md:top-6 md:right-6 mb-4 md:mb-0">
+                        <button id="btn-vote-${catId}-${plan.type}" 
+                                onclick="castVote('${catId}', '${plan.type}', '${proposalsData.find(c=>c.id===catId).name}', '${plan.title}')"
+                                class="${btnBgClass} text-white px-6 py-3 rounded-full shadow-lg flex items-center gap-3 transition transform hover:scale-105 active:scale-95 w-full md:w-auto justify-center">
+                            <span class="text-xl">🗳️</span>
+                            <div class="text-left leading-tight">
+                                <span class="block font-bold text-sm">投我一票</span>
+                                <span class="block text-xs opacity-90">目前票數: <span id="count-${catId}-${plan.type}" class="font-bold text-white text-lg">${currentVotes}</span></span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <h3 class="text-2xl font-bold ${textClass} mb-2 pr-0 md:pr-40">${plan.title}</h3>
+                    <p class="text-gray-700 font-medium mb-4 pr-0 md:pr-40">${plan.desc}</p>
                     
-                    <div class="grid md:grid-cols-2 gap-6">
+                    <div class="grid md:grid-cols-2 gap-6 mt-6">
                         <div>
                             <h4 class="font-bold text-gray-800 mb-2">提案背景</h4>
                             <p class="text-gray-600 text-sm mb-4">${plan.background}</p>
